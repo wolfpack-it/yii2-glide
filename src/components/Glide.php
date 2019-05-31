@@ -27,6 +27,7 @@ use League\Glide\Server;
 use yii\base\Component;
 use yii\base\InvalidConfigException;
 use yii\helpers\ArrayHelper;
+use yii\helpers\Url;
 
 /**
  * Class Glide
@@ -35,7 +36,7 @@ use yii\helpers\ArrayHelper;
 class Glide extends Component
 {
     /**
-     * @var string
+     * @var string|array
      */
     public $baseUrl;
 
@@ -128,6 +129,18 @@ class Glide extends Component
      */
     protected $_imageManager;
 
+    /**
+     * @param array $url
+     * @param bool $scheme
+     * @return string
+     */
+    public function createUrl($path, $scheme = false): string
+    {
+        $url = is_string($this->baseUrl) ? [$this->baseUrl] : $this->baseUrl;
+        $url['path'] = $path;
+        return Url::to($url, $scheme);
+    }
+
     public function init()
     {
         $this->cache = is_string($this->cache) && \Yii::$app->has($this->cache) ? \Yii::$app->get($this->cache) : \Yii::createObject($this->cache);
@@ -157,6 +170,10 @@ class Glide extends Component
         }
 
         $this->initManipulators();
+
+        if (YII_ENV_PROD && !$this->maxImageSize) {
+            \Yii::warning('It is higly recommended to set max image size on production.', 'glide');
+        }
 
         parent::init();
     }
@@ -232,10 +249,31 @@ class Glide extends Component
             $this->_server->setGroupCacheInFolders($this->groupCacheInFolders);
             $this->_server->setDefaults($this->defaults);
             $this->_server->setPresets($this->presets);
-            $this->_server->setBaseUrl($this->baseUrl);
+            $this->_server->setBaseUrl(Url::to($this->baseUrl));
             $this->_server->setResponseFactory($this->responseFactory);
         }        
 
         return $this->_server;
+    }
+
+    /**
+     * @param $path
+     * @param array $params
+     * @return string
+     * @throws \League\Glide\Filesystem\FileNotFoundException
+     * @throws \League\Glide\Filesystem\FilesystemException
+     */
+    public function makeImage($path, $params = []): string
+    {
+        return $this->getServer()->makeImage($path, $params);
+    }
+
+    /**
+     * @param $path
+     * @param array $params
+     */
+    public function outputImage($path, $params = []): void
+    {
+        $this->getServer()->outputImage($path, $params);
     }
 }
