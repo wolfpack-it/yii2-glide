@@ -37,7 +37,7 @@ Component example:
 'components' => [
     'glideSource' => [
         'class' => \creocoder\flysystem\LocalFilesystem::class,
-        'path' => '/path/to/source-storage'
+        'path' => '</path/to/source-storage>'
     ],
 ]
 ```
@@ -52,7 +52,7 @@ The configured filesystems can then be used in the Glide configuration:
             'source' => 'glideSource', // via component
             'cache' => [
                 'class' => \creocoder\flysystem\LocalFilesystem::class,
-                'path' => '/path/to/cache-storage'
+                'path' => '</path/to/cache-storage>'
             ], // via configuration
             'watermarks' => \creocoder\flysystem\AwsS3Filesystem:class // via container
         ]
@@ -82,8 +82,68 @@ class GlideController extends yii\web\Controller
 }
 ```
 
+## Security
+To protect your server agains attacks trying to resize loads of images it is a good idea to protect the urls. A good
+package for that is [Sam-ITs Url Signer](https://github.com/SAM-IT/yii2-urlsigner). It signs urls with an expiration
+and can lock the params if you don't want anyone to change images.
+
+It is not included in the package since it is simple to configure:
+
+#### Signer configuration
+
+```php
+'container' => [
+    'definitions' => [
+        \SamIT\Yii2\UrlSigner\UrlSigner::class => [
+            'secret' => '<secret>',
+        ],
+    ]
+]
+```
+
+#### HMAC filter in controller
+```php
+class GlideController extends yii\web\Controller
+{
+    /**
+     * @return array
+     */
+    public function behaviors(): array
+    {
+        return ArrayHelper::merge(
+            [
+                HmacFilter::class => [
+                    'class' => HmacFilter::class,
+                    'signer' => \Yii::$container->get(\SamIT\Yii2\UrlSigner\UrlSigner::class) //via Dependancy Injection
+                    'signer' => $this->controller->module->get('<urlSignerComponent>') // via component
+                ]
+            ],
+            parent::behaviors()
+        );
+    }
+```
+
+#### Signing urls
+```php
+$urlSigner = \Yii::createObject(\SamIT\Yii2\UrlSigner\UrlSigner::class);
+
+$url = [
+    '/img/index', // NOTE: This must be the route from the root 
+    'path' => '</path/to/image>'
+];
+$allowAddition = true; // Whether or not to allow image modifications after url generation
+$expiration = new DateTime())->add(new DateInterval('P7D'));
+
+$urlSigner->signParams(
+    $url,
+    $allowAddition,
+    $expiration
+);
+
+echo yii\helpers\Url::to($url, true);
+```
+
 ## TODO
-- Signing of urls with [Sam IT Url Signer](https://github.com/SAM-IT/yii2-urlsigner)
 - Add tests 
 
 ## Credits
