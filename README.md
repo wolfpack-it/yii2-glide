@@ -36,7 +36,7 @@ Component example:
 ```php
 'components' => [
     'glideSource' => [
-        'class' => 'creocoder\flysystem\LocalFilesystem',
+        'class' => \creocoder\flysystem\LocalFilesystem::class,
         'path' => '/path/to/source-storage'
     ],
 ]
@@ -48,13 +48,13 @@ The configured filesystems can then be used in the Glide configuration:
 'container' => [
     'definitions' => [
         \WolfpackIT\glide\components\Glide::class => [
-            'class' => 'WolfpackIT\glide\components\Glide',
+            'class' => \WolfpackIT\glide\components\Glide::class,
             'source' => 'glideSource', // via component
             'cache' => [
-                'class' => 'creocoder\flysystem\LocalFilesystem',
+                'class' => \creocoder\flysystem\LocalFilesystem::class,
                 'path' => '/path/to/cache-storage'
             ], // via configuration
-            'watermarks' => 'creocoder\flysystem\AwsS3Filesystem' // via container
+            'watermarks' => \creocoder\flysystem\AwsS3Filesystem:class // via container
         ]
     ]
 ]
@@ -74,7 +74,7 @@ class GlideController extends yii\web\Controller
             parent::actions(),
             [
                 'index' => [
-                    'class' => 'WolfpackIT\glide\actions\GlideAction'
+                    'class' => \WolfpackIT\glide\actions\GlideAction::class
                 ]
             ]
         );
