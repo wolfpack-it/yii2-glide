@@ -4,7 +4,6 @@ namespace WolfpackIT\glide\components;
 
 use creocoder\flysystem\Filesystem;
 use Intervention\Image\ImageManager;
-use League\Flysystem\FilesystemInterface;
 use League\Glide\Api\Api;
 use League\Glide\Manipulators\Background;
 use League\Glide\Manipulators\Blur;
@@ -145,7 +144,7 @@ class Glide extends Component
     {
         $this->cache = is_string($this->cache) && \Yii::$app->has($this->cache) ? \Yii::$app->get($this->cache) : \Yii::createObject($this->cache);
         $this->source = is_string($this->source) && \Yii::$app->has($this->source) ? \Yii::$app->get($this->source) : \Yii::createObject($this->source);
-        $this->watermarks = $this->watermarks ? \Yii::createObject($this->watermarks) : null;
+        $this->watermarks = is_string($this->watermarks) && \Yii::$app->has($this->watermarks) ? \Yii::$app->get($this->watermarks) : \Yii::createObject($this->watermarks);
         
         if (!$this->cache || !$this->cache instanceof Filesystem) {
             throw new InvalidConfigException('Cache must be set and be instance of ' . Filesystem::class);
@@ -196,7 +195,7 @@ class Glide extends Component
                 new Pixelate(),
                 new Background(),
                 new Border(),
-                $this->watermarks ? new Watermark($this->watermarks, $this->watermarksPathPrefix) : null,
+                $this->watermarks ? new Watermark($this->watermarks->getFilesystem(), $this->watermarksPathPrefix) : null,
                 new Encode(),
             ]);
     }
@@ -239,13 +238,13 @@ class Glide extends Component
     {
         if (!$this->_server) {
             $this->_server = new Server(
-                $this->source,
-                $this->cache,
+                $this->source->getFilesystem(),
+                $this->cache->getFilesystem(),
                 $this->getApi()
             );
             
             $this->_server->setSourcePathPrefix($this->sourcePathPrefix);
-            $this->_server->setCache($this->cachePathPrefix);
+            $this->_server->setCachePathPrefix($this->cachePathPrefix);
             $this->_server->setGroupCacheInFolders($this->groupCacheInFolders);
             $this->_server->setDefaults($this->defaults);
             $this->_server->setPresets($this->presets);
