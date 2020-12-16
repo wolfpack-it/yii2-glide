@@ -143,6 +143,65 @@ $urlSigner->signParams(
 echo yii\helpers\Url::to($url, true);
 ```
 
+## Second security approach
+The package mentioned above requires an expiration which means that every url will be unique every time you generate it.
+This causes a problem with client side caching. So another approach has been added which unfortunately is a little less
+pretty implementation but allows for non expiring links. Look [here](https://glide.thephpleague.com/1.0/config/security/)
+for more information.
+
+#### Signer configuration
+Make sure the key is secure, since the hashing used is only MD5.
+
+```php
+'container' => [
+    'definitions' => [
+         \League\Glide\Signatures\Signature::class => function(\yii\di\Container $container) {
+            return \League\Glide\Signatures\SignatureFactory::create('<secret>');
+         },
+         \League\Glide\Urls\UrlBuilder::class => function(\yii\di\Container $container) {
+             return new \League\Glide\Urls\UrlBuilder('', $container->get(\League\Glide\Signatures\Signature::class));
+         },
+    ]
+]
+``` 
+
+#### Signature filter in controller
+```php
+class GlideController extends yii\web\Controller
+{
+    /**
+     * @return array
+     */
+    public function behaviors(): array
+    {
+        return ArrayHelper::merge(
+            [
+                SignatureFilter::class => [
+                    'class' => SignatureFilter::class,
+                ]
+            ],
+            parent::behaviors()
+        );
+    }
+}
+```
+
+#### Signing urls
+```php
+$urlBuilder = \Yii::createObject(\League\Glide\Urls\UrlBuilder::class);
+
+$url = [
+    '/img/index', // NOTE: This must be the route from the root 
+    'path' => '</path/to/image>',
+];
+
+$options = [
+    'w' => 1000,
+];
+
+echo $urlBuilder->getUrl(Url::to($url), $options);
+```
+
 ## TODO
 - Add tests 
 

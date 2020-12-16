@@ -1,8 +1,9 @@
 <?php
 
-namespace WolfpackIT\glide\actions;
+namespace WolfpackIT\glide\controllers;
 
 use WolfpackIT\glide\actions\GlideAction;
+use WolfpackIT\glide\filters\SignatureFilter;
 use yii\filters\AccessControl;
 use yii\helpers\ArrayHelper;
 use yii\web\Controller;
@@ -43,7 +44,10 @@ class GlideController extends Controller
                             'actions' => ['index']
                         ]
                     ]
-                ]
+                ],
+//                SignatureFilter::class => [
+//                    'class' => SignatureFilter::class,
+//                ]
             ],
             parent::behaviors()
         );
