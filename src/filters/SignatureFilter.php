@@ -3,12 +3,14 @@
 namespace WolfpackIT\glide\filters;
 
 use League\Glide\Signatures\Signature;
+use League\Glide\Signatures\SignatureException;
 use League\Glide\Signatures\SignatureFactory;
 use yii\base\Action;
 use yii\base\ActionFilter;
 use yii\base\InvalidConfigException;
 use yii\di\Instance;
 use yii\helpers\ArrayHelper;
+use yii\web\ForbiddenHttpException;
 use yii\web\Request;
 
 /**
@@ -35,7 +37,11 @@ class SignatureFilter extends ActionFilter
         $request = $action->controller->module->get('request');
         $queryParams = $request->queryParams;
         $path = ArrayHelper::remove($queryParams, 'path');
-        $this->signature->validateRequest($request->getPathInfo(), $queryParams);
+        try {
+            $this->signature->validateRequest($request->getPathInfo(), $queryParams);
+        } catch (SignatureException $e) {
+            throw new ForbiddenHttpException($e->getMessage(), 0, $e);
+        }
 
         return $result;
     }
