@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace WolfpackIT\glide\controllers;
 
 use WolfpackIT\glide\actions\GlideAction;
@@ -8,15 +10,8 @@ use yii\filters\AccessControl;
 use yii\helpers\ArrayHelper;
 use yii\web\Controller;
 
-/**
- * Class GlideController
- * @package WolfpackIT\glide\actions
- */
 class GlideController extends Controller
 {
-    /**
-     * @return array
-     */
     public function actions(): array
     {
         return ArrayHelper::merge(
@@ -29,9 +24,6 @@ class GlideController extends Controller
         );
     }
 
-    /**
-     * @return array
-     */
     public function behaviors(): array
     {
         return ArrayHelper::merge(
