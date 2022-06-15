@@ -1,9 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace WolfpackIT\glide\components;
 
-use creocoder\flysystem\Filesystem;
 use Intervention\Image\ImageManager;
+use League\Flysystem\Filesystem;
 use League\Glide\Api\Api;
 use League\Glide\Manipulators\Background;
 use League\Glide\Manipulators\Blur;
@@ -25,115 +27,35 @@ use League\Glide\Responses\ResponseFactoryInterface;
 use League\Glide\Server;
 use yii\base\Component;
 use yii\base\InvalidConfigException;
+use yii\di\Instance;
 use yii\helpers\ArrayHelper;
 use yii\helpers\Url;
 
-/**
- * Class Glide
- * @package WolfpackIT\glide\components
- */
 class Glide extends Component
 {
-    /**
-     * @var string|array
-     */
-    public $baseUrl;
-
-    /**
-     * Cache filesystem
-     *
-     * @var array|string|Filesystem
-     */
-    public $cache;
-
-    /**
-     * @var string
-     */
-    public $cachePathPrefix;
-
-    /**
-     * @var array
-     */
-    public $defaults = [];
-
-    /**
-     * @var bool
-     */
-    public $groupCacheInFolders = true;
-
-    /**
-     * Image manager, must be imagick or gd
-     * Default will first try imagick and otherwise use gd
-     *
-     * @var string
-     */
-    public $imageManager;
-
+    public array|string $baseUrl = '';
+    public Filesystem|array|string $cache;
+    public string $cachePathPrefix = '';
+    public array $defaults = [];
+    public bool $groupCacheInFolders = true;
+    public string $imageManager;
     /**
      * @var ManipulatorInterface[]
      */
-    public $manipulators;
+    public array $manipulators;
+    public int|null $maxImageSize = null;
+    public array $presets = [];
+    public ResponseFactoryInterface|array|string $responseFactory = ResponseFactoryInterface::class;
+    public Filesystem|array|string $source;
+    public string $sourcePathPrefix = '';
+    public Filesystem|array|string $watermarks;
+    public string $watermarksPathPrefix = '';
 
-    /**
-     * @var int
-     */
-    public $maxImageSize;
+    private Api $_api;
+    private Server $_server;
+    private ImageManager $_imageManager;
 
-    /**
-     * @var array
-     */
-    public $presets = [];
-
-    /**
-     * @var array|string|ResponseFactoryInterface
-     */
-    public $responseFactory;
-
-    /**
-     * Source filesystem
-     *
-     * @var array|string|Filesystem
-     */
-    public $source;
-
-    /**
-     * @var string
-     */
-    public $sourcePathPrefix;
-
-    /**
-     * Source filesystem
-     *
-     * @var array|string|Filesystem
-     */
-    public $watermarks;
-
-    /**
-     * @var string
-     */
-    public $watermarksPathPrefix;
-
-    /**
-     * @var Api
-     */
-    protected $_api;
-
-    /**
-     * @var Server
-     */
-    protected $_server;
-
-    /**
-     * @var ImageManager
-     */
-    protected $_imageManager;
-
-    /**
-     * @param array $url
-     * @param bool $scheme
-     * @return string
-     */
-    public function createUrl($path, $scheme = false): string
+    public function createUrl(array|string $path, bool $scheme = false): string
     {
         $url = is_string($this->baseUrl) ? [$this->baseUrl] : $this->baseUrl;
         $url['path'] = $path;
@@ -142,42 +64,27 @@ class Glide extends Component
 
     public function init()
     {
-        $this->cache = is_string($this->cache) && \Yii::$app->has($this->cache) ? \Yii::$app->get($this->cache) : \Yii::createObject($this->cache);
-        $this->source = is_string($this->source) && \Yii::$app->has($this->source) ? \Yii::$app->get($this->source) : \Yii::createObject($this->source);
-        $this->watermarks = is_string($this->watermarks) && \Yii::$app->has($this->watermarks) ? \Yii::$app->get($this->watermarks) : \Yii::createObject($this->watermarks);
-        
-        if (!$this->cache || !$this->cache instanceof Filesystem) {
-            throw new InvalidConfigException('Cache must be set and be instance of ' . Filesystem::class);
-        }
-
-        if (!$this->source || !$this->source instanceof Filesystem) {
-            throw new InvalidConfigException('Source must be set and be instance of ' . Filesystem::class);
-        }
-
-        if ($this->watermarks && !$this->watermarks instanceof Filesystem) {
-            throw new InvalidConfigException('Source must be instance of ' . Filesystem::class);
-        }
+        $this->cache = Instance::ensure($this->cache, Filesystem::class);
+        $this->source = Instance::ensure($this->source, Filesystem::class);
+        $this->watermarks = Instance::ensure($this->watermarks, Filesystem::class);
+        $this->responseFactory = Instance::ensure($this->responseFactory, ResponseFactoryInterface::class);
 
         $allowedImageManagerValues = ['imagic', 'gd'];
 
-        if ($this->imageManager && !ArrayHelper::isIn($this->imageManager, $allowedValues)) {
-            throw new InvalidConfigException('ImageManager must be one of: ' . implode(', ', $allowedValues));
-        }
-
-        if (is_string($this->responseFactory) || is_array($this->responseFactory)) {
-            $this->responseFactory = \Yii::createObject(ResponseFactoryInterface::class);
+        if (isset($this->imageManager) && !ArrayHelper::isIn($this->imageManager, $allowedImageManagerValues)) {
+            throw new InvalidConfigException('ImageManager must be one of: ' . implode(', ', $allowedImageManagerValues));
         }
 
         $this->initManipulators();
 
-        if (YII_ENV_PROD && !$this->maxImageSize) {
+        if (YII_ENV_PROD && !isset($this->maxImageSize)) {
             \Yii::warning('It is higly recommended to set max image size on production.', 'glide');
         }
 
         parent::init();
     }
 
-    protected function initManipulators()
+    protected function initManipulators(): void
     {
         $this->manipulators =
             $this->manipulators
@@ -195,17 +102,14 @@ class Glide extends Component
                 new Pixelate(),
                 new Background(),
                 new Border(),
-                $this->watermarks ? new Watermark($this->watermarks->getFilesystem(), $this->watermarksPathPrefix) : null,
+                $this->watermarks ? new Watermark($this->watermarks, $this->watermarksPathPrefix) : null,
                 new Encode(),
             ]);
     }
 
-    /**
-     * @return Api
-     */
     public function getApi(): Api
     {
-        if (!$this->_api) {
+        if (!isset($this->_api)) {
             $this->_api = new Api(
                 $this->getImageManager(),
                 $this->manipulators
@@ -215,12 +119,9 @@ class Glide extends Component
         return $this->_api;
     }
 
-    /**
-     * @return ImageManager
-     */
     public function getImageManager(): ImageManager
     {
-        if (!$this->_imageManager) {
+        if (!isset($this->_imageManager)) {
             $imageManager =
                 $this->imageManager
                 ?? (extension_loaded('imagick') ? 'imagick' : 'gd');
@@ -231,18 +132,15 @@ class Glide extends Component
         return $this->_imageManager;
     }
 
-    /**
-     * @return Server
-     */
     public function getServer(): Server
     {
-        if (!$this->_server) {
+        if (!isset($this->_server)) {
             $this->_server = new Server(
-                $this->source->getFilesystem(),
-                $this->cache->getFilesystem(),
+                $this->source,
+                $this->cache,
                 $this->getApi()
             );
-            
+
             $this->_server->setSourcePathPrefix($this->sourcePathPrefix);
             $this->_server->setCachePathPrefix($this->cachePathPrefix);
             $this->_server->setGroupCacheInFolders($this->groupCacheInFolders);
@@ -250,28 +148,17 @@ class Glide extends Component
             $this->_server->setPresets($this->presets);
             $this->_server->setBaseUrl(Url::to($this->baseUrl));
             $this->_server->setResponseFactory($this->responseFactory);
-        }        
+        }
 
         return $this->_server;
     }
 
-    /**
-     * @param $path
-     * @param array $params
-     * @return string
-     * @throws \League\Glide\Filesystem\FileNotFoundException
-     * @throws \League\Glide\Filesystem\FilesystemException
-     */
-    public function makeImage($path, $params = []): string
+    public function makeImage(string $path, array $params = []): string
     {
         return $this->getServer()->makeImage($path, $params);
     }
 
-    /**
-     * @param $path
-     * @param array $params
-     */
-    public function outputImage($path, $params = []): void
+    public function outputImage(string $path, array $params = []): void
     {
         $this->getServer()->outputImage($path, $params);
     }
