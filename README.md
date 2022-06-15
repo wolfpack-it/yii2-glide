@@ -35,10 +35,9 @@ Each filesystem can be configured as a component or directly in the container.
 Component example:
 ```php
 'components' => [
-    'glideSource' => [
-        'class' => \creocoder\flysystem\LocalFilesystem::class,
-        'path' => '</path/to/source-storage>'
-    ],
+    'glideSource' => function() {
+        return new \League\Flysystem\Filesystem(new \League\Flysystem\Local\LocalFilesystemAdapter(\Yii::getAlias('</path/to/source-storage>')));
+    },
 ]
 ```
 
@@ -51,10 +50,9 @@ The configured filesystems can then be used in the Glide configuration:
             'class' => \WolfpackIT\glide\components\Glide::class,
             'source' => 'glideSource', // via component
             'cache' => [
-                'class' => \creocoder\flysystem\LocalFilesystem::class,
-                'path' => '</path/to/cache-storage>'
+                'class' => ...,
             ], // via configuration
-            'watermarks' => \creocoder\flysystem\AwsS3Filesystem:class // via container
+            'watermarks' =>  ...::class // via container
         ]
     ]
 ]
@@ -65,9 +63,6 @@ The preferred usage is via an action in the controllers action method:
 ```php
 class GlideController extends yii\web\Controller
 {
-    /**
-     * @return array
-     */
     public function actions(): array
     {
         return ArrayHelper::merge(

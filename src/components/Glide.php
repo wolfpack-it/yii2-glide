@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace WolfpackIT\glide\components;
 
-use creocoder\flysystem\Filesystem;
 use Intervention\Image\ImageManager;
+use League\Flysystem\Filesystem;
 use League\Glide\Api\Api;
 use League\Glide\Manipulators\Background;
 use League\Glide\Manipulators\Blur;
@@ -33,9 +33,9 @@ use yii\helpers\Url;
 
 class Glide extends Component
 {
-    public array|string $baseUrl;
+    public array|string $baseUrl = '';
     public Filesystem|array|string $cache;
-    public string $cachePathPrefix;
+    public string $cachePathPrefix = '';
     public array $defaults = [];
     public bool $groupCacheInFolders = true;
     public string $imageManager;
@@ -43,17 +43,17 @@ class Glide extends Component
      * @var ManipulatorInterface[]
      */
     public array $manipulators;
-    public int $maxImageSize;
+    public int|null $maxImageSize = null;
     public array $presets = [];
     public ResponseFactoryInterface|array|string $responseFactory = ResponseFactoryInterface::class;
     public Filesystem|array|string $source;
-    public string $sourcePathPrefix;
+    public string $sourcePathPrefix = '';
     public Filesystem|array|string $watermarks;
-    public string $watermarksPathPrefix;
+    public string $watermarksPathPrefix = '';
 
-    protected Api $_api;
-    protected Server $_server;
-    protected ImageManager $_imageManager;
+    private Api $_api;
+    private Server $_server;
+    private ImageManager $_imageManager;
 
     public function createUrl(array|string $path, bool $scheme = false): string
     {
@@ -71,13 +71,13 @@ class Glide extends Component
 
         $allowedImageManagerValues = ['imagic', 'gd'];
 
-        if ($this->imageManager && !ArrayHelper::isIn($this->imageManager, $allowedImageManagerValues)) {
+        if (isset($this->imageManager) && !ArrayHelper::isIn($this->imageManager, $allowedImageManagerValues)) {
             throw new InvalidConfigException('ImageManager must be one of: ' . implode(', ', $allowedImageManagerValues));
         }
 
         $this->initManipulators();
 
-        if (YII_ENV_PROD && !$this->maxImageSize) {
+        if (YII_ENV_PROD && !isset($this->maxImageSize)) {
             \Yii::warning('It is higly recommended to set max image size on production.', 'glide');
         }
 
@@ -102,14 +102,14 @@ class Glide extends Component
                 new Pixelate(),
                 new Background(),
                 new Border(),
-                $this->watermarks ? new Watermark($this->watermarks->getFilesystem(), $this->watermarksPathPrefix) : null,
+                $this->watermarks ? new Watermark($this->watermarks, $this->watermarksPathPrefix) : null,
                 new Encode(),
             ]);
     }
 
     public function getApi(): Api
     {
-        if (!$this->_api) {
+        if (!isset($this->_api)) {
             $this->_api = new Api(
                 $this->getImageManager(),
                 $this->manipulators
@@ -136,11 +136,11 @@ class Glide extends Component
     {
         if (!isset($this->_server)) {
             $this->_server = new Server(
-                $this->source->getFilesystem(),
-                $this->cache->getFilesystem(),
+                $this->source,
+                $this->cache,
                 $this->getApi()
             );
-            
+
             $this->_server->setSourcePathPrefix($this->sourcePathPrefix);
             $this->_server->setCachePathPrefix($this->cachePathPrefix);
             $this->_server->setGroupCacheInFolders($this->groupCacheInFolders);
@@ -148,7 +148,7 @@ class Glide extends Component
             $this->_server->setPresets($this->presets);
             $this->_server->setBaseUrl(Url::to($this->baseUrl));
             $this->_server->setResponseFactory($this->responseFactory);
-        }        
+        }
 
         return $this->_server;
     }

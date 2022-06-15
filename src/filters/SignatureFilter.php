@@ -1,35 +1,22 @@
 <?php
 
+declare(strict_types=1);
+
 namespace WolfpackIT\glide\filters;
 
 use League\Glide\Signatures\Signature;
 use League\Glide\Signatures\SignatureException;
-use League\Glide\Signatures\SignatureFactory;
-use yii\base\Action;
 use yii\base\ActionFilter;
-use yii\base\InvalidConfigException;
 use yii\di\Instance;
 use yii\helpers\ArrayHelper;
 use yii\web\ForbiddenHttpException;
 use yii\web\Request;
 
-/**
- * Class SignatureFilter
- * @package WolfpackIT\glide\filters
- */
 class SignatureFilter extends ActionFilter
 {
-    /**
-     * @var Signature
-     */
-    public $signature = Signature::class;
+    public Signature|array|string $signature = Signature::class;
 
-    /**
-     * @param Action $action
-     * @return bool
-     * @throws InvalidConfigException
-     */
-    public function beforeAction($action)
+    public function beforeAction($action): bool
     {
         $result = parent::beforeAction($action);
 

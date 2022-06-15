@@ -37,7 +37,7 @@ class GlideAction extends Action
 
         if (
             $server->cacheFileExists($path, [])
-            && $server->getSource()->getTimestamp($path) >= $server->getCache()->getTimestamp($path)
+            && $server->getSource()->lastModified($path) >= $server->getCache()->lastModified($path)
         ) {
             $server->deleteCache($path);
         }
@@ -45,8 +45,8 @@ class GlideAction extends Action
         try {
             $path = $server->makeImage($path, $request->get());
 
-            $response->headers->add('Content-Type', $server->getCache()->getMimetype($path));
-            $response->headers->add('Content-Length', $server->getCache()->getSize($path));
+            $response->headers->add('Content-Type', $server->getCache()->mimeType($path));
+            $response->headers->add('Content-Length', $server->getCache()->fileSize($path));
             $response->headers->add('Cache-Control', 'max-age=31536000, public');
             $response->headers->add('Expires', (new \DateTime('UTC + 1 year'))->format('D, d M Y H:i:s \G\M\T'));
 
@@ -58,7 +58,7 @@ class GlideAction extends Action
             throw new ServerErrorHttpException('Failed outputting the image.', 0, $e);
         }
     }
-    
+
     protected function getServer(): Server
     {
         return $this->glide->getServer();
